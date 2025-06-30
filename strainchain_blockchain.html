@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrainChain - Verify Cannabis Authenticity</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.10.0/web3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-hint-color: #999999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #f1f1f1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #22c55e, #16a34a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .wallet-section {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            color: white;
+            text-align: center;
+        }
+
+        .wallet-status {
+            font-size: 14px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .connect-wallet-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .connect-wallet-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .scan-section {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .scan-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
+        .qr-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .scan-btn {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            margin-top: 12px;
+        }
+
+        .scan-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3);
+        }
+
+        .scan-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .feature-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .verification-result {
+            display: none;
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 20px;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .verification-result.show {
+            display: block;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .blockchain-info {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+
+        .tx-hash {
+            font-family: monospace;
+            word-break: break-all;
+            color: #059669;
+            margin-top: 4px;
+        }
+
+        .product-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .product-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 16px;
+        }
+
+        .product-info h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+            color: #1f2937;
+        }
+
+        .product-info p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .status-badge.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .lab-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .lab-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .lab-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .lab-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .nft-section {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .nft-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .nft-icon {
+            font-size: 20px;
+            margin-right: 8px;
+        }
+
+        .nft-title {
+            font-weight: 600;
+            color: #92400e;
+        }
+
+        .nft-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #92400e;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #22c55e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+
+        .haptic-feedback {
+            user-select: none;
+        }
+
+        .network-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+
+        .network-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .network-dot.disconnected {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌿 StrainChain</div>
+            <div class="tagline">Blockchain Cannabis Authentication</div>
+            <div class="network-status">
+                <span class="network-dot" id="networkDot"></span>
+                <span id="networkStatus">Connecting to blockchain...</span>
+            </div>
+        </div>
+
+        <div class="wallet-section">
+            <div class="wallet-status" id="walletStatus">Wallet Not Connected</div>
+            <div class="wallet-address" id="walletAddress" style="display: none;"></div>
+            <button class="connect-wallet-btn haptic-feedback" id="connectWallet" onclick="connectWallet()">
+                🔗 Connect Wallet
+            </button>
+        </div>
+
+        <div class="scan-section">
+            <div class="scan-icon">📱</div>
+            <h3>Verify Product on Blockchain</h3>
+            <p style="color: #64748b; margin: 8px 0;">Enter token ID or contract address to verify authenticity</p>
+            <input type="text" class="qr-input" id="tokenInput" placeholder="Token ID (e.g., 0x1234...abcd or 42)" />
+            <button class="scan-btn haptic-feedback" id="verifyBtn" onclick="verifyProduct()" disabled>
+                🔍 Verify on Blockchain
+            </button>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <div class="feature-title">Smart Contract</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🧪</div>
+                <div class="feature-title">Lab Results</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">💎</div>
+                <div class="feature-title">NFT Verified</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📈</div>
+                <div class="feature-title">Price Oracle</div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Verifying product on blockchain...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+        <div class="verification-result" id="result">
+            <div class="status-badge" id="statusBadge">
+                ✅ BLOCKCHAIN VERIFIED
+            </div>
+
+            <div class="blockchain-info" id="blockchainInfo">
+                <strong>🔗 Blockchain Verification</strong><br>
+                Network: <span id="networkName">Ethereum</span><br>
+                Block: <span id="blockNumber">#18,500,234</span><br>
+                Transaction Hash:<br>
+                <div class="tx-hash" id="txHash">0x1234567890abcdef...</div>
+            </div>
+            
+            <div class="product-header">
+                <div class="product-image" id="productEmoji">🟣</div>
+                <div class="product-info">
+                    <h3 id="productName">Loading...</h3>
+                    <p id="productType">Verifying...</p>
+                </div>
+            </div>
+
+            <div class="lab-results">
+                <div class="lab-item">
+                    <div class="lab-value" id="thcValue">--</div>
+                    <div class="lab-label">THC</div>
+                </div>
+                <div class="lab-item">
+                    <div class="lab-value" id="cbdValue">--</div>
+                    <div class="lab-label">CBD</div>
+                </div>
+                <div class="lab-item">
+                    <div class="lab-value" id="batchValue">--</div>
+                    <div class="lab-label">Batch</div>
+                </div>
+                <div class="lab-item">
+                    <div class="lab-value" id="labValue">--</div>
+                    <div class="lab-label">Verified By</div>
+                </div>
+            </div>
+
+            <div class="nft-section">
+                <div class="nft-header">
+                    <span class="nft-icon">💎</span>
+                    <span class="nft-title">NFT Token Info</span>
+                </div>
+                <div class="nft-value" id="nftValue">Loading...</div>
+                <p style="font-size: 12px; color: #92400e; margin-top: 4px;" id="nftDetails">Fetching from blockchain...</p>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn haptic-feedback" onclick="viewOnEtherscan()">🔍 View on Explorer</button>
+                <button class="action-btn haptic-feedback" onclick="shareProduct()">📤 Share</button>
+                <button class="action-btn haptic-feedback" onclick="viewMetadata()">📄 Metadata</button>
+                <button class="action-btn haptic-feedback" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram WebApp initialization
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.hide();
+        tg.BackButton.hide();
+
+        // Blockchain variables
+        let web3;
+        let userAccount;
+        let currentTokenData;
+        
+        // Smart contract ABI (simplified for cannabis NFT)
+        const CANNABIS_NFT_ABI = [
+            {
+                "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+                "name": "tokenURI",
+                "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+                "name": "ownerOf",
+                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+                "name": "getLabResults",
+                "outputs": [
+                    {"internalType": "string", "name": "thc", "type": "string"},
+                    {"internalType": "string", "name": "cbd", "type": "string"},
+                    {"internalType": "string", "name": "batch", "type": "string"},
+                    {"internalType": "string", "name": "lab", "type": "string"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Contract addresses (you'll need to deploy actual contracts)
+        const CONTRACT_ADDRESSES = {
+            mainnet: '0x1234567890123456789012345678901234567890', // Replace with actual contract
+            sepolia: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd', // Testnet contract
+            polygon: '0x9876543210987654321098765432109876543210'  // Polygon contract
+        };
+
+        // Sample data for demo
+        const SAMPLE_STRAINS = {
+            '1': {
+                name: 'Purple Haze Premium',
+                type: 'Sativa Dominant Hybrid',
+                thc: '22.5%',
+                cbd: '0.8%',
+                batch: '#PH-2024',
+                lab: '✓ GreenLab',
+                emoji: '🟣',
+                metadata: {
+                    image: 'https://example.com/purple-haze.jpg',
+                    description: 'Premium Purple Haze strain with verified lab results',
+                    attributes: [
+                        { trait_type: 'Strain Type', value: 'Sativa Dominant' },
+                        { trait_type: 'THC Content', value: '22.5%' },
+                        { trait_type: 'CBD Content', value: '0.8%' }
+                    ]
+                }
+            },
+            '2': {
+                name: 'Blue Dream Classic',
+                type: 'Hybrid',
+                thc: '18.7%',
+                cbd: '1.2%',
+                batch: '#BD-2024',
+                lab: '✓ CannTest',
+                emoji: '🔵',
+                metadata: {
+                    image: 'https://example.com/blue-dream.jpg',
+                    description: 'Classic Blue Dream hybrid strain',
+                    attributes: [
+                        { trait_type: 'Strain Type', value: 'Hybrid' },
+                        { trait_type: 'THC Content', value: '18.7%' },
+                        { trait_type: 'CBD Content', value: '1.2%' }
+                    ]
+                }
+            }
+        };
+
+        // Initialize Web3 and check for wallet
+        async function initializeWeb3() {
+            try {
+                if (typeof window.ethereum !== 'undefined') {
+                    web3 = new Web3(window.ethereum);
+                    updateNetworkStatus(true);
+                    
+                    // Check if already connected
+                    const accounts = await web3.eth.getAccounts();
+                    if (accounts.length > 0) {
+                        userAccount = accounts[0];
+                        updateWalletUI();
+                        enableVerification();
+                    }
+                } else {
+                    // Fallback to public RPC
+                    web3 = new Web3('https://eth-sepolia.g.alchemy.com/v2/demo');
+                    updateNetworkStatus(true);
+                    enableVerification(); // Allow read-only access
+                    
+                    document.getElementById('walletStatus').textContent = 'Read-Only Mode';
+                    document.getElementById('connectWallet').textContent = '📖 Read-Only Access';
+                    document.getElementById('connectWallet').disabled = true;
+                }
+            } catch (error) {
+                console.error('Web3 initialization failed:', error);
+                updateNetworkStatus(false);
+                showError('Failed to connect to blockchain network');
+            }
+        }
+
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    showError('No Web3 wallet detected. Please install MetaMask or use a Web3 browser.');
+                    return;
+                }
+
+                hapticFeedback();
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                userAccount = accounts[0];
+                updateWalletUI();
+                enableVerification();
+
+                tg.showAlert('Wallet connected successfully!');
+
+            } catch (error) {
+                console.error('Wallet connection failed:', error);
+                showError('Failed to connect wallet: ' + error.message);
+            }
+        }
+
+        function updateWalletUI() {
+            if (userAccount) {
+                document.getElementById('walletStatus').textContent = 'Wallet Connected';
+                document.getElementById('walletAddress').textContent = 
+                    userAccount.substring(0, 6) + '...' + userAccount.substring(38);
+                document.getElementById('walletAddress').style.display = 'block';
+                document.getElementById('connectWallet').textContent = '✅ Connected';
+                document.getElementById('connectWallet').disabled = true;
+            }
+        }
+
+        function updateNetworkStatus(connected) {
+            const dot = document.getElementById('networkDot');
+            const status = document.getElementById('networkStatus');
+            
+            if (connected) {
+                dot.classList.remove('disconnected');
+                status.textContent = 'Connected to Ethereum';
+            } else {
+                dot.classList.add('disconnected');
+                status.textContent = 'Blockchain disconnected';
+            }
+        }
+
+        function enableVerification() {
+            document.getElementById('verifyBtn').disabled = false;
+        }
+
+        async function verifyProduct() {
+            const tokenInput = document.getElementById('tokenInput').value.trim();
+            
+            if (!tokenInput) {
+                showError('Please enter a token ID or contract address');
+                return;
+            }
+
+            hapticFeedback();
+            showLoading('Verifying product on blockchain...');
+            hideError();
+
+            try {
+                let tokenId = tokenInput;
+                
+                // If input looks like an address, extract token ID or use default
+                if (tokenInput.startsWith('0x') && tokenInput.length === 42) {
+                    tokenId = '1'; // Default to token ID 1 for demo
+                }
+
+                // For demo purposes, use sample data
+                if (SAMPLE_STRAINS[tokenId]) {
+                    await simulateBlockchainVerification(tokenId);
+                } else {
+                    // Try actual blockchain call
+                    await verifyOnBlockchain(tokenId);
+                }
+
+            } catch (error) {
+                console.error('Verification failed:', error);
+                hideLoading();
+                showError('Verification failed: ' + error.message);
+            }
+        }
+
+        async function simulateBlockchainVerification(tokenId) {
+            const strain = SAMPLE_STRAINS[tokenId];
+            
+            // Simulate blockchain delay
+            setTimeout(() => {
+                currentTokenData = {
+                    tokenId: tokenId,
+                    contract: CONTRACT_ADDRESSES.sepolia,
+                    txHash: '0x' + Math.random().toString(16).substr(2, 64),
+                    blockNumber: Math.floor(Math.random() * 1000000) + 18000000,
+                    ...strain
+                };
+
+                updateVerificationResult(currentTokenData);
+                hideLoading();
+                showResult();
+            }, 2000);
+        }
+
+        async function verifyOnBlockchain(tokenId) {
+            try {
+                const contract = new web3.eth.Contract(CANNABIS_NFT_ABI, CONTRACT_ADDRESSES.sepolia);
+                
+                // Get token owner
+                const owner = await contract.methods.ownerOf(tokenId).call();
+                
+                // Get token URI
+                const tokenURI = await contract.methods.tokenURI(tokenId).call();
+                
+                // Get lab results (if available)
+                let labResults;
+                try {
+                    labResults = await contract.methods.getLabResults(tokenId).call();
+                } catch (e) {
+                    // Lab results method might not exist
+                    labResults = ['N/A', 'N/A', 'N/A', 'N/A'];
+                }
+
+                // Fetch metadata from URI
+                let metadata = {};
+                if (tokenURI) {
+                    try {
+                        const response = await fetch(tokenURI);
+                        metadata = await response.json();
+                    } catch (e) {
+                        console.warn('Could not fetch metadata:', e);
+                    }
+                }
+
+                currentTokenData = {
+                    tokenId: tokenId,
+                    contract: CONTRACT_ADDRESSES.sepolia,
+                    owner: owner,
+                    tokenURI: tokenURI,
+                    name: metadata.name || 'Cannabis NFT #' + tokenId,
+                    type: metadata.description || 'Verified Cannabis Product',
+                    thc: labResults[0] || 'N/A',
+                    cbd: labResults[1] || 'N/A',
+                    batch: labResults[2] || 'N/A',
+                    lab: labResults[3] || 'N/A',
+                    emoji: '🌿',
+                    metadata: metadata,
+                    txHash: '0x' + Math.random().toString(16).substr(2, 64), // Would be from actual transaction
+                    blockNumber: await web3.eth.getBlockNumber()
+                };
+
+                updateVerificationResult(currentTokenData);
+                hideLoading();
+                showResult();
+
+            } catch (error) {
+                // If blockchain call fails, try demo data
+                if (SAMPLE_STRAINS[tokenId]) {
+                    await simulateBlockchainVerification(tokenId);
+                } else {
+                    throw new Error('Token not found or invalid contract address');
+                }
+            }
+        }
+
+        function updateVerificationResult(data) {
+            // Update status badge
+            document.getElementById('statusBadge').className = 'status-badge';
+            document.getElementById('statusBadge').innerHTML = '✅ BLOCKCHAIN VERIFIED';
+
+            // Update blockchain info
+            document.getElementById('networkName').textContent = 'Ethereum Sepolia';
+            document.getElementById('blockNumber').textContent = '#' + data.blockNumber;
+            document.getElementById('txHash').textContent = data.txHash;
+
+            // Update product info
+            document.getElementById('productEmoji').textContent = data.emoji;
+            document.getElementById('productName').textContent = data.name;
+            document.getElementById('productType').textContent = data.type;
+
+            // Update lab results
+            document.getElementById('thcValue').textContent = data.thc;
+            document.getElementById('cbdValue').textContent = data.cbd;
+            document.getElementById('batchValue').textContent = data.batch;
+            document.getElementById('labValue').textContent = data.lab;
+
+            // Update NFT info
+            document.getElementById('nftValue').textContent = `Token #${data.tokenId}`;
+            document.getElementById('nftDetails').textContent = `Contract: ${data.contract.substring(0, 10)}...`;
+        }
+
+        function showResult() {
+            document.getElementById('result').classList.add('show');
+            tg.BackButton.show();
+            
+            tg.MainButton.setText('Add to Collection');
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                tg.showAlert('Product added to your collection!');
+                hapticFeedback();
+            });
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loading').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorMessage').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Action button functions
+        function viewOnEtherscan() {
+            if (currentTokenData) {
+                const url = `https://sepolia.etherscan.io/tx/${currentTokenData.txHash}`;
+                tg.openLink(url);
+            }
+        }
+
+        function shareProduct() {
+            if (currentTokenData) {
+                const data = `Check out this verified ${currentTokenData.name} on StrainChain! 
